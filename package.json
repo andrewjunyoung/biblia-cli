@@ -1,0 +1,29 @@
+{
+  "name": "biblia",
+  "version": "1.0.0",
+  "description": "A CLI tool for Biblia",
+  "main": "dist/index.js",
+  "bin": {
+    "biblia": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "cli",
+    "biblia"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "dotenv": "^17.2.2"
+  }
+}
