@@ -1,2 +1,2 @@
 make:
-	npm run build && npm link
+	npm i && npm run build && npm link
