@@ -2,19 +2,16 @@
 
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, resolve, dirname } from 'path';
 import { Transliteration } from './transliteration';
-import * as dotenv from 'dotenv';
 import { GREEK_SEPTUAGINT_ID, KJV_ID, HEBREW_TANAKH_ID } from './consts';
 import { parseVerseReference, isOldTestament } from './verseParsing';
-import { interactiveConfigure } from './configure';
-
-dotenv.config({ quiet: true });
+import { interactiveConfigure, getConfigurationValue } from './configure';
 
 const program = new Command();
 
 const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '../package.json'), 'utf8')
+  readFileSync(resolve(__dirname, '../package.json'), 'utf8')
 );
 
 program
@@ -34,9 +31,9 @@ program
   .description('List all available bibles')
   .action(async () => {
     try {
-      const apiKey = process.env.API_KEY;
+      const apiKey = getConfigurationValue('api_key');
       if (!apiKey) {
-        console.error('API_KEY not found in environment variables');
+        console.error('API key not found. Run "biblia configure" to set it up.');
         process.exit(1);
       }
 
@@ -67,9 +64,9 @@ program
   .requiredOption('--bible-id <bibleId>', 'Bible ID to list books from')
   .action(async (options) => {
     try {
-      const apiKey = process.env.API_KEY;
+      const apiKey = getConfigurationValue('api_key');
       if (!apiKey) {
-        console.error('API_KEY not found in environment variables');
+        console.error('API key not found. Run "biblia configure" to set it up.');
         process.exit(1);
       }
 
@@ -104,11 +101,12 @@ program
 program
   .command('get-verse <reference>')
   .description('Get a Bible verse by reference (e.g., Genesis 1:1, Gen 1:1-3)')
-  .action(async (reference: string) => {
+  .option('--bible-id <bibleId>', 'Bible ID to use for the translation')
+  .action(async (reference: string, options) => {
     try {
-      const apiKey = process.env.API_KEY;
+      const apiKey = getConfigurationValue('api_key');
       if (!apiKey) {
-        console.error('API_KEY not found in environment variables');
+        console.error('API key not found. Run "biblia configure" to set it up.');
         process.exit(1);
       }
 
@@ -122,11 +120,12 @@ program
 
       // Fetch each verse
       const results = [];
+      const bibleId = options.bibleId || KJV_ID;
 
       for (const verseToken of parsedVerses) {
-        const url = `https://api.scripture.api.bible/v1/bibles/${KJV_ID}/verses/${verseToken}?content-type=text&include-notes=false&include-titles=true&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false&use-org-id=false`;
+        const url = `https://api.scripture.api.bible/v1/bibles/${bibleId}/verses/${verseToken}?content-type=text&include-notes=false&include-titles=true&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false&use-org-id=false`;
 
-        // Fetch KJV
+        // Fetch translation
         const kjvResponse = await fetch(url, {
           method: 'GET',
           headers: {

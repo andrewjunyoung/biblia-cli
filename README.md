@@ -10,7 +10,7 @@ $ biblia get-verse "John 3:16"
   {
     verse: 'Jhn.3.16',
     original: '[16] Οὕτως γὰρ ἠγάπησεν ὁ Θεὸς τὸν κόσμον ὥστε τὸν Υἱὸν αὐτοῦ τὸν μονογενῆ ἔδωκεν, ἵνα πᾶς ὁ πιστεύων εἰς αὐτὸν μὴ ἀπόληται, ἀλλ᾿ ἔχῃ ζωὴν αἰώνιον. \n',
-    transcription: '[16] Outóś gar egapesen o T͡Heoś ton kosmon óste ton Uion autou ton monogene edóken, ina paś o pisteuón eiś auton me apoletai, all᾿ ek͡he zóen aiónion. \n',
+    transcription: '[16] Houtóś gar egapesen o T͡heoś ton kosmon hóste ton Uion autou ton monogene edóken, ina paś o pisteuón eiś auton me apoletai, all᾿ ek͡he zóen aiónion. \n',
     translation: '[16] For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. \n'
   }
 ]
