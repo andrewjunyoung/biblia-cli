@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import { join } from 'path';
+import { getVerse } from '../index';
 
 const CLI_PATH = join(__dirname, '../../dist/index.js');
 
@@ -10,28 +11,23 @@ describe('CLI Integration Tests', () => {
   });
 
   describe('get-verse command', () => {
-    it('should successfully fetch John 3:16 with all expected fields', () => {
-      const result = execSync(`node ${CLI_PATH} get-verse "John 3:16"`, {
-        encoding: 'utf8',
-        cwd: join(__dirname, '../..'),
-      });
+    it('should successfully fetch John 3:16 with all expected fields', async () => {
+      const results = await getVerse('John 3:16');
 
-      expect(result).toBeTruthy();
+      expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBeGreaterThan(0);
 
-      console.log('Raw output:', result);
-      const parsed = JSON.parse(result);
-      expect(Array.isArray(parsed)).toBe(true);
-      expect(parsed.length).toBeGreaterThan(0);
-
-      const verse = parsed[0];
+      const verse = results[0];
       expect(typeof verse.verse).toBe('string');
       expect(verse.verse.length).toBeGreaterThan(0);
 
+      expect(verse.original).toBeTruthy();
       expect(typeof verse.original).toBe('string');
-      expect(verse.original.length).toBeGreaterThan(0);
+      expect(verse.original!.length).toBeGreaterThan(0);
 
+      expect(verse.transcription).toBeTruthy();
       expect(typeof verse.transcription).toBe('string');
-      expect(verse.transcription.length).toBeGreaterThan(0);
+      expect(verse.transcription!.length).toBeGreaterThan(0);
 
       expect(typeof verse.translation).toBe('string');
       expect(verse.translation.length).toBeGreaterThan(0);
