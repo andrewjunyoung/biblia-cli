@@ -1,12 +1,57 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { Transliteration } from './transliteration';
 import { GREEK_SEPTUAGINT_ID, KJV_ID, HEBREW_TANAKH_ID } from './consts';
 import { parseVerseReference, isOldTestament } from './verseParsing';
 import { interactiveConfigure, getConfigurationValue } from './configure';
+
+// Load Strong's concordance data
+function loadStrongsData(): Map<string, string[]> {
+  const strongsMap = new Map<string, string[]>();
+  const strongsPath = resolve(__dirname, '../data/strongs.txt');
+
+  if (!existsSync(strongsPath)) {
+    return strongsMap;
+  }
+
+  const content = readFileSync(strongsPath, 'utf8');
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    const match = line.match(/^(.+?)(<.+)$/);
+    if (match) {
+      const verseRef = match[1];
+      const strongsNums = match[2].match(/<[H|G](\d+)>/g)?.map(s => s.slice(1, -1)) || [];
+      strongsMap.set(verseRef, strongsNums);
+    }
+  }
+
+  return strongsMap;
+}
+
+// Load Strong's Greek data and create ID to lemma mapping
+function loadStrongsGreekRoots(): Map<string, string> {
+  const lemmaMap = new Map<string, string>();
+
+  try {
+    const { STRONGS_GREEK } = require(`${process.cwd()}/data/strongs-greek.ts`);
+
+    for (const [id, entry] of Object.entries(STRONGS_GREEK)) {
+      if ((entry as any).lemma) {
+        lemmaMap.set(id, (entry as any).lemma);
+      }
+    }
+  } catch (error) {
+
+  }
+
+  return lemmaMap;
+}
 
 const program = new Command();
 
@@ -121,6 +166,11 @@ program
       // Fetch each verse
       const results = [];
       const bibleId = options.bibleId || KJV_ID;
+      const strongsData = loadStrongsData();
+      const greekRoots = loadStrongsGreekRoots();
+      if ( !greekRoots ) {
+        console.log("Failed to load greek root words");
+      }
 
       for (const verseToken of parsedVerses) {
         const url = `https://api.scripture.api.bible/v1/bibles/${bibleId}/verses/${verseToken}?content-type=text&include-notes=false&include-titles=true&include-chapter-numbers=false&include-verse-numbers=true&include-verse-spans=false&use-org-id=false`;
@@ -164,25 +214,38 @@ program
 
           if (originalResponse.ok) {
             const originalData = await originalResponse.json();
-            originalText = originalData.data.content;
+            originalText = originalData.data.content.trim();
             originalTextNormalized = originalText.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            transcription = isOT
+            transcription = (isOT
               ? Transliteration.hebrew2Latin(originalTextNormalized)
-              : Transliteration.greek2Latin(originalTextNormalized);
+              : Transliteration.greek2Latin(originalTextNormalized)).trim();
           }
         } catch (error) {
           // Fail gracefully - original text and transcription will remain null
+        }
+
+        // Get Strong's numbers for this verse
+        const strongsCodes = strongsData.get(verseToken) || [];
+
+        // Build codes and roots arrays
+        const roots: string[] = [];
+        for (const code of strongsCodes) {
+          const root = greekRoots.get(code);
+          if (root) {
+            roots.push(root);
+          }
         }
 
         results.push({
           verse: verseToken,
           original: originalText,
           transcription: transcription,
-          translation: kjvData.data.content
+          translation: kjvData.data.content.trim(),
+          strongs: { strongsCodes, roots }
         });
       }
 
-      console.log(results);
+      console.log(results, { depth: null });
     } catch (error) {
       console.error('Error fetching verse:', error);
       process.exit(1);
