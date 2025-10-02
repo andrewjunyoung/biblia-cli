@@ -30,7 +30,7 @@ class Strongs {
 
   loadStrongsBible(): Map<string, string[]> {
     const strongsMap = new Map<string, string[]>();
-    const strongsPath = resolve(__dirname, "../data/strongs.txt");
+    const strongsPath = resolve(__dirname, "../../data/strongs.txt");
 
     if (!existsSync(strongsPath)) {
       return strongsMap;

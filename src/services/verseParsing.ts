@@ -1,4 +1,4 @@
-import { Books, OldTestamentBook, NewTestamentBook } from "./types/book";
+import { Books, OldTestamentBook, NewTestamentBook } from "../types/book";
 
 const BOOK_ABBREVIATIONS: Record<string, string> = (() => {
   const abbrevs: Record<string, string> = {};

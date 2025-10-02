@@ -3,11 +3,11 @@
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { Transliteration } from './transliteration';
+import { Transliteration } from './services/transliteration';
 import { GREEK_SEPTUAGINT_ID, KJV_ID, HEBREW_TANAKH_ID } from './consts';
-import { parseVerseReference, isOldTestament } from './verseParsing';
-import { interactiveConfigure, getConfigurationValue } from './configure';
-import Strongs from './strongs';
+import { parseVerseReference, isOldTestament } from './services/verseParsing';
+import { interactiveConfigure, getConfigurationValue } from './commands/configure';
+import Strongs from './services/strongs';
 
 const program = new Command();
 
