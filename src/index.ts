@@ -34,23 +34,26 @@ function loadStrongsData(): Map<string, string[]> {
   return strongsMap;
 }
 
-// Load Strong's Greek data and create ID to lemma mapping
-function loadStrongsGreekRoots(): Map<string, string> {
-  const lemmaMap = new Map<string, string>();
+// Load Strong's Greek data and create ID to entry mapping
+function loadStrongsGreekData(): Map<string, { lemma: string, kjv_def: string }> {
+  const dataMap = new Map<string, { lemma: string, kjv_def: string }>();
 
   try {
     const { STRONGS_GREEK } = require(`${process.cwd()}/data/strongs-greek.ts`);
 
     for (const [id, entry] of Object.entries(STRONGS_GREEK)) {
-      if ((entry as any).lemma) {
-        lemmaMap.set(id, (entry as any).lemma);
+      if ((entry as any).lemma && (entry as any).kjv_def) {
+        dataMap.set(id, {
+          lemma: (entry as any).lemma,
+          kjv_def: (entry as any).kjv_def
+        });
       }
     }
   } catch (error) {
 
   }
 
-  return lemmaMap;
+  return dataMap;
 }
 
 const program = new Command();
@@ -167,8 +170,8 @@ program
       const results = [];
       const bibleId = options.bibleId || KJV_ID;
       const strongsData = loadStrongsData();
-      const greekRoots = loadStrongsGreekRoots();
-      if ( !greekRoots ) {
+      const greekData = loadStrongsGreekData();
+      if ( !greekData ) {
         console.log("Failed to load greek root words");
       }
 
@@ -227,12 +230,16 @@ program
         // Get Strong's numbers for this verse
         const strongsCodes = strongsData.get(verseToken) || [];
 
-        // Build codes and roots arrays
+        // Build codes, roots, and translations arrays
         const roots: string[] = [];
+        const translations: string[] = [];
         for (const code of strongsCodes) {
-          const root = greekRoots.get(code);
-          if (root) {
-            roots.push(root);
+          const entry = greekData.get(code);
+          if (entry) {
+            const rootNormalized = entry.lemma.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const rootTranslit = Transliteration.greek2Latin(rootNormalized).trim();
+            roots.push(rootTranslit);
+            translations.push(entry.kjv_def);
           }
         }
 
@@ -241,11 +248,11 @@ program
           original: originalText,
           transcription: transcription,
           translation: kjvData.data.content.trim(),
-          strongs: { strongsCodes, roots }
+          strongs: { codes: strongsCodes, roots, translations }
         });
       }
 
-      console.log(results, { depth: null });
+      console.dir(results, { depth: null, maxArrayLength: null });
     } catch (error) {
       console.error('Error fetching verse:', error);
       process.exit(1);
