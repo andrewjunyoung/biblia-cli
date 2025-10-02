@@ -1,66 +1,21 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { readFileSync, existsSync } from 'fs';
-import { join, resolve, dirname } from 'path';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { Transliteration } from './transliteration';
 import { GREEK_SEPTUAGINT_ID, KJV_ID, HEBREW_TANAKH_ID } from './consts';
 import { parseVerseReference, isOldTestament } from './verseParsing';
 import { interactiveConfigure, getConfigurationValue } from './configure';
-
-// Load Strong's concordance data
-function loadStrongsData(): Map<string, string[]> {
-  const strongsMap = new Map<string, string[]>();
-  const strongsPath = resolve(__dirname, '../data/strongs.txt');
-
-  if (!existsSync(strongsPath)) {
-    return strongsMap;
-  }
-
-  const content = readFileSync(strongsPath, 'utf8');
-  const lines = content.split('\n');
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-
-    const match = line.match(/^(.+?)(<.+)$/);
-    if (match) {
-      const verseRef = match[1];
-      const strongsNums = match[2].match(/<[H|G](\d+)>/g)?.map(s => s.slice(1, -1)) || [];
-      strongsMap.set(verseRef, strongsNums);
-    }
-  }
-
-  return strongsMap;
-}
-
-// Load Strong's Greek data and create ID to entry mapping
-function loadStrongsGreekData(): Map<string, { lemma: string, kjv_def: string }> {
-  const dataMap = new Map<string, { lemma: string, kjv_def: string }>();
-
-  try {
-    const { STRONGS_GREEK } = require(`${process.cwd()}/data/strongs-greek.ts`);
-
-    for (const [id, entry] of Object.entries(STRONGS_GREEK)) {
-      if ((entry as any).lemma && (entry as any).kjv_def) {
-        dataMap.set(id, {
-          lemma: (entry as any).lemma,
-          kjv_def: (entry as any).kjv_def
-        });
-      }
-    }
-  } catch (error) {
-
-  }
-
-  return dataMap;
-}
+import Strongs from './strongs';
 
 const program = new Command();
 
 const packageJson = JSON.parse(
   readFileSync(resolve(__dirname, '../package.json'), 'utf8')
 );
+
+const strongs = new Strongs();
 
 program
   .name('biblia')
@@ -147,6 +102,20 @@ program
   });
 
 program
+  .command('get-strongs <strongsId>')
+  .description('Get Strong\'s concordance entry by ID (e.g., G123, H1234)')
+  .action((strongsId: string) => {
+    const entry = strongs.getEntry(strongsId.toUpperCase());
+
+    if (!entry) {
+      console.error(`Strong's entry not found: ${strongsId}`);
+      process.exit(1);
+    }
+
+    console.dir(entry, { depth: null, maxArrayLength: null });
+  });
+
+program
   .command('get-verse <reference>')
   .description('Get a Bible verse by reference (e.g., Genesis 1:1, Gen 1:1-3)')
   .option('--bible-id <bibleId>', 'Bible ID to use for the translation')
@@ -169,9 +138,9 @@ program
       // Fetch each verse
       const results = [];
       const bibleId = options.bibleId || KJV_ID;
-      const strongsData = loadStrongsData();
-      const greekData = loadStrongsGreekData();
-      if ( !greekData ) {
+      const strongsBible = strongs.loadStrongsBible();
+      const greekData = strongs.loadStrongsGreekData();
+      if (!greekData) {
         console.log("Failed to load greek root words");
       }
 
@@ -228,7 +197,8 @@ program
         }
 
         // Get Strong's numbers for this verse
-        const strongsCodes = strongsData.get(verseToken) || [];
+        const strongsCodes = strongsBible.get(verseToken) || [];
+
 
         // Build codes, roots, and translations arrays
         const roots: string[] = [];
@@ -236,7 +206,7 @@ program
         for (const code of strongsCodes) {
           const entry = greekData.get(code);
           if (entry) {
-            const rootNormalized = entry.lemma.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const rootNormalized = entry.root.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             const rootTranslit = Transliteration.greek2Latin(rootNormalized).trim();
             roots.push(rootTranslit);
             translations.push(entry.kjv_def);
@@ -258,8 +228,5 @@ program
       process.exit(1);
     }
   });
-
-function transcribe() {
-}
 
 program.parse();
