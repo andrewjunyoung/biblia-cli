@@ -134,7 +134,7 @@ program
 
 export async function getVerse(
   reference: string,
-  options: { bibleId?: string } = {}
+  options: { bibleId?: string; filter?: boolean } = {}
 ) {
   const apiKey = getConfigurationValue("api_key");
   if (!apiKey) {
@@ -224,36 +224,42 @@ export async function getVerse(
       // Fail gracefully - original text and transcription will remain null
     }
 
-    // Get Strong's numbers for this verse
-    const strongsCodes = strongsBible.get(verseToken) || [];
-
-    // Build codes, roots, and translations arrays
-    const roots: string[] = [];
-    const translations: string[] = [];
-    for (const code of strongsCodes) {
-      const entry = strongsData.get(code);
-      if (entry) {
-        const rootNormalized = entry.root
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-        let rootTranslit;
-        if (isOT) {
-          rootTranslit = Transliteration.hebrew2Latin(rootNormalized).trim();
-        } else {
-          rootTranslit = Transliteration.greek2Latin(rootNormalized).trim();
-        }
-        roots.push(rootTranslit);
-        translations.push(entry.kjv_def);
-      }
-    }
-
-    results.push({
+    const result: any = {
       verse: verseToken,
       original: originalText,
       transcription: transcription,
       translation: kjvData.data.content.trim(),
-      strongs: { codes: strongsCodes, roots, translations },
-    });
+    };
+
+    // Only include Strong's data if filter is not enabled
+    if (!options.filter) {
+      // Get Strong's numbers for this verse
+      const strongsCodes = strongsBible.get(verseToken) || [];
+
+      // Build codes, roots, and translations arrays
+      const roots: string[] = [];
+      const translations: string[] = [];
+      for (const code of strongsCodes) {
+        const entry = strongsData.get(code);
+        if (entry) {
+          const rootNormalized = entry.root
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+          let rootTranslit;
+          if (isOT) {
+            rootTranslit = Transliteration.hebrew2Latin(rootNormalized).trim();
+          } else {
+            rootTranslit = Transliteration.greek2Latin(rootNormalized).trim();
+          }
+          roots.push(rootTranslit);
+          translations.push(entry.kjv_def);
+        }
+      }
+
+      result.strongs = { codes: strongsCodes, roots, translations };
+    }
+
+    results.push(result);
   }
 
   return results;
@@ -263,10 +269,92 @@ program
   .command("get-verse <reference>")
   .description("Get a Bible verse by reference (e.g., Genesis 1:1, Gen 1:1-3)")
   .option("--bible-id <bibleId>", "Bible ID to use for the translation")
+  .option("--filter", "Exclude Strong's concordance information")
+  .option("--pretty", "Format output as a readable paragraph")
   .action(async (reference: string, options) => {
     try {
       const results = await getVerse(reference, options);
-      console.dir(results, { depth: null, maxArrayLength: null });
+
+      if (options.pretty) {
+        // Extract book and chapter from first verse
+        const firstVerse = results[0].verse.split('.');
+        const book = firstVerse[0];
+        const chapter = firstVerse[1];
+        const title = `${book} ${chapter}`;
+
+        // Get terminal width, default to 80 if not available
+        const terminalWidth = process.stdout.columns || 80;
+
+        // Create centered header with # characters
+        const titleWithSpaces = ` ${title} `;
+        const totalPadding = Math.max(0, terminalWidth - titleWithSpaces.length);
+        const leftPadding = Math.floor(totalPadding / 2);
+        const rightPadding = totalPadding - leftPadding;
+        const header = '#'.repeat(leftPadding) + titleWithSpaces + '#'.repeat(rightPadding);
+
+        console.log('\n' + header + '\n');
+
+        // Translation section
+        const translationHeader = ' Translation ';
+        const translationPadding = Math.max(0, terminalWidth - translationHeader.length);
+        const translationLeft = Math.floor(translationPadding / 2);
+        const translationRight = translationPadding - translationLeft;
+        const translationLine = '─'.repeat(translationLeft) + translationHeader + '─'.repeat(translationRight);
+
+        console.log(translationLine + '\n');
+
+        for (const result of results) {
+          const verseNum = result.verse.split('.')[2];
+          console.log(`[${verseNum}] ${result.translation}`);
+        }
+
+        // Original text section (if available)
+        if (results.some(r => r.original)) {
+          console.log('\n' + '─'.repeat(Math.floor((terminalWidth - 11) / 2)) + ' Original ' + '─'.repeat(Math.ceil((terminalWidth - 11) / 2)) + '\n');
+
+          for (const result of results) {
+            if (result.original) {
+              const verseNum = result.verse.split('.')[2];
+              console.log(`[${verseNum}] ${result.original}`);
+            }
+          }
+        }
+
+        // Transcription section (if available)
+        if (results.some(r => r.transcription)) {
+          console.log('\n' + '─'.repeat(Math.floor((terminalWidth - 17) / 2)) + ' Transcription ' + '─'.repeat(Math.ceil((terminalWidth - 17) / 2)) + '\n');
+
+          for (const result of results) {
+            if (result.transcription) {
+              const verseNum = result.verse.split('.')[2];
+              console.log(`[${verseNum}] ${result.transcription}`);
+            }
+          }
+        }
+
+        // Strong's section (if available)
+        if (results.some(r => r.strongs)) {
+          console.log('\n' + '─'.repeat(Math.floor((terminalWidth - 11) / 2)) + ' Strong\'s ' + '─'.repeat(Math.ceil((terminalWidth - 11) / 2)) + '\n');
+
+          for (const result of results) {
+            if (result.strongs) {
+              const verseNum = result.verse.split('.')[2];
+              console.log(`[${verseNum}] Codes: ${result.strongs.codes.join(', ')}`);
+              if (result.strongs.roots.length > 0) {
+                console.log(`     Roots: ${result.strongs.roots.join(', ')}`);
+              }
+              if (result.strongs.translations.length > 0) {
+                console.log(`     Definitions: ${result.strongs.translations.join('; ')}`);
+              }
+              console.log('');
+            }
+          }
+        }
+
+        console.log('');
+      } else {
+        console.dir(results, { depth: null, maxArrayLength: null });
+      }
     } catch (error) {
       console.error("Error fetching verse:", error);
       process.exit(1);
