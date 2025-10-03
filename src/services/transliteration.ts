@@ -139,7 +139,7 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ר: "R",
     ש: "C",
     ת: "T",
-    "\u05B0": "​", // Shva
+    "\u05B0": "ə", // Shva
     "\u05B4": "i", // Hiriq
     "\u05B5": "ë", // Tsere
     "\u05B6": "ě", // Segol
@@ -152,7 +152,7 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     "\u05BB": "ù", // Qubuts
   },
   [YOUNGIAN]: {
-    א: "ʔ",
+    א: "'",
     ב: "b",
     ג: "g",
     ד: "d",
@@ -160,7 +160,7 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ו: "w",
     ז: "z",
     ח: "h",
-    ט: "t`",
+    ט: "th́",
     י: "j",
     כ: "k",
     ך: "ḱ",
@@ -170,16 +170,16 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     נ: "n",
     ן: "ń",
     ס: "c",
-    ע: "`",
+    ע: "h́",
     פ: "p",
     ף: "ṕ",
-    צ: "c`",
-    ץ: "ć`",
+    צ: "c͡h́",
+    ץ: "ć͡h́",
     ק: "q",
     ר: "r",
     ש: "s",
     ת: "t",
-    "\u05B0": "​", // Shva
+    "\u05B0": "ə", // Shva
     "\u05B4": "i", // Hiriq
     "\u05B5": "ë", // Tsere
     "\u05B6": "ě", // Segol
