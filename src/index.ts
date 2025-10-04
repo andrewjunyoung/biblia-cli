@@ -74,7 +74,7 @@ program
 program
   .command("list-books")
   .description("List all books in a bible")
-  .requiredOption("--bible-id <bibleId>", "Bible ID to list books from")
+  .option("--bible-id <bibleId>", "Bible ID to list books from")
   .action(async (options) => {
     try {
       const apiKey = getConfigurationValue("api_key");
@@ -85,8 +85,16 @@ program
         process.exit(1);
       }
 
+      const bibleId = options.bibleId || getConfigurationValue("default_bible_id");
+      if (!bibleId) {
+        console.error(
+          "Bible ID not provided and no default_bible_id found in config. Run \"biblia configure\" to set it up or use --bible-id."
+        );
+        process.exit(1);
+      }
+
       const response = await fetch(
-        `https://api.scripture.api.bible/v1/bibles/${options.bibleId}/books`,
+        `https://api.scripture.api.bible/v1/bibles/${bibleId}/books`,
         {
           method: "GET",
           headers: {
@@ -112,6 +120,50 @@ program
   });
 
 program
+  .command("list-chapters")
+  .description("List all chapters in a book")
+  .option("--bible-id <bibleId>", "Bible ID to use")
+  .option("--book <bookId>", "Book ID to list chapters from")
+  .action(async (options) => {
+    try {
+      if (!options.book) {
+        console.error("--book option is required");
+        process.exit(1);
+      }
+
+      const data = await listChapters(options.book, {
+        bibleId: options.bibleId,
+      });
+      console.log(JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error("Error fetching chapters:", error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("list-verses")
+  .description("List all verses in a chapter")
+  .option("--bible-id <bibleId>", "Bible ID to use")
+  .option("--book <chapterId>", "Chapter ID to list verses from")
+  .action(async (options) => {
+    try {
+      if (!options.book) {
+        console.error("--book option is required");
+        process.exit(1);
+      }
+
+      const data = await listVerses(options.book, {
+        bibleId: options.bibleId,
+      });
+      console.log(JSON.stringify(data, null, 2));
+    } catch (error) {
+      console.error("Error fetching verses:", error);
+      process.exit(1);
+    }
+  });
+
+program
   .command("configure")
   .description("Configure biblia settings interactively")
   .action(async () => {
@@ -131,6 +183,78 @@ program
 
     console.dir(entry, { depth: null, maxArrayLength: null });
   });
+
+export async function listChapters(
+  bookId: string,
+  options: { bibleId?: string } = {}
+) {
+  const apiKey = getConfigurationValue("api_key");
+  if (!apiKey) {
+    throw new Error('API key not found. Run "biblia configure" to set it up.');
+  }
+
+  const bibleId = options.bibleId || getConfigurationValue("default_bible_id");
+  if (!bibleId) {
+    throw new Error(
+      "Bible ID not provided and no default_bible_id found in config."
+    );
+  }
+
+  const url = `https://api.scripture.api.bible/v1/bibles/${bibleId}/books/${bookId}/chapters`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+  return data;
+}
+
+export async function listVerses(
+  chapterId: string,
+  options: { bibleId?: string } = {}
+) {
+  const apiKey = getConfigurationValue("api_key");
+  if (!apiKey) {
+    throw new Error('API key not found. Run "biblia configure" to set it up.');
+  }
+
+  const bibleId = options.bibleId || getConfigurationValue("default_bible_id");
+  if (!bibleId) {
+    throw new Error(
+      "Bible ID not provided and no default_bible_id found in config."
+    );
+  }
+
+  const url = `https://api.scripture.api.bible/v1/bibles/${bibleId}/chapters/${chapterId}/verses`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `API request failed: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+  return data;
+}
 
 export async function getVerse(
   reference: string,
