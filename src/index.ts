@@ -352,7 +352,7 @@ export async function getVerse(
         originalText = originalData.data.content.trim();
         originalTextNormalized = originalText
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
+          .replace(/[\u0300-\u0313\u0315-\u036f]/g, "");
         transcription = (
           isOT
             ? Transliteration.hebrew2Latin(originalTextNormalized)

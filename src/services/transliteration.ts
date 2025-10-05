@@ -56,6 +56,7 @@ const greekToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ψ: "p͡s",
     Ω: "ó",
     ω: "ó",
+    "\u0314": "",
   },
   [YOUNGIAN]: {
     Α: "A",
@@ -107,6 +108,7 @@ const greekToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ψ: "p͡s",
     Ω: "Ó",
     ω: "ó",
+    "\u0314": "h",
   },
 };
 
@@ -219,16 +221,43 @@ export class Transliteration {
   }
 
   greek2Latin(greekText: string): string {
-    return greekText
-      .split("")
-      .map((char) => greekToLatinTable[this.scheme][char] || char)
-      .join("");
+    return Transliteration.greek2Latin(greekText, this.scheme);
   }
 
   static greek2Latin(greekText: string, scheme: SchemeName = YOUNGIAN): string {
-    return greekText
-      .split("")
-      .map((char) => greekToLatinTable[scheme][char] || char)
+    const normalized = greekText.normalize("NFD");
+    const words = normalized.split(/(\s+)/);
+
+    return words
+      .map((word) => {
+        if (/\s/.test(word)) return word;
+
+        let hasH = false;
+        let output = "";
+
+        for (let i = 0; i < word.length; i++) {
+          const char = word[i];
+          const next = word[i + 1];
+
+          if (next === "\u0314") {
+            const isRho = /[ρΡ]/.test(char);
+            const isUpper = char === char.toUpperCase();
+            const base = greekToLatinTable[scheme][char] || char;
+            output += isRho ? (isUpper ? "Rh" : "rh") : base;
+            hasH = hasH || !isRho;
+            i++;
+          } else if (char !== "\u0314") {
+            output += greekToLatinTable[scheme][char] || char;
+          }
+        }
+
+        if (hasH) {
+          const firstChar = output[0];
+          const isUpper = firstChar === firstChar.toUpperCase();
+          return (isUpper ? "H" : "h") + output.toLowerCase();
+        }
+        return output;
+      })
       .join("");
   }
 
