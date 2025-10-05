@@ -57,6 +57,9 @@ const greekToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     Ω: "ó",
     ω: "ó",
     "\u0314": "",
+    "·": ";",
+    "᾿": "'",
+    "—": "-",
   },
   [YOUNGIAN]: {
     Α: "A",
@@ -109,6 +112,9 @@ const greekToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     Ω: "Ó",
     ω: "ó",
     "\u0314": "h",
+    "·": ";",
+    "᾿": "'",
+    "—": "-",
   },
 };
 
@@ -147,6 +153,7 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ש: "C",
     תּ: "T", // Tav with dagesh (fortition)
     ת: "Th", // Tav without dagesh (spirantized)
+    "־": "-",
     "\u05BC": ":", // Dagesh (gemination for non-BeGaD KeFaT)
     "\u05B0": "ə", // Shva
     "\u05B4": "i", // Hiriq
@@ -194,6 +201,7 @@ const hebrewToLatinTable: { [scheme: string]: { [char: string]: string } } = {
     ש: "s",
     תּ: "t", // Tav with dagesh (fortition)
     ת: "th", // Tav without dagesh (spirantized)
+    "־": "-",
     "\u05BC": ":", // Dagesh (gemination for non-BeGaD KeFaT)
     "\u05B0": "ə", // Shva
     "\u05B4": "i", // Hiriq
@@ -252,9 +260,16 @@ export class Transliteration {
         }
 
         if (hasH) {
-          const firstChar = output[0];
+          // Find the first alphabetical character
+          const firstAlphaIndex = output.search(/[a-zA-Z]/);
+          if (firstAlphaIndex === -1) return output;
+
+          const prefix = output.substring(0, firstAlphaIndex);
+          const firstChar = output[firstAlphaIndex];
           const isUpper = firstChar === firstChar.toUpperCase();
-          return (isUpper ? "H" : "h") + output.toLowerCase();
+          const rest = output.substring(firstAlphaIndex);
+
+          return prefix + (isUpper ? "H" : "h") + rest.toLowerCase();
         }
         return output;
       })
