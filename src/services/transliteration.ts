@@ -284,15 +284,44 @@ export class Transliteration {
     hebrewText: string,
     scheme: SchemeName = YOUNGIAN
   ): string {
-    // Strip out Hebrew cantillation marks (Unicode range U+0591-U+05AF and U+05BD-U+05C7)
-    // but keep vowel points and dagesh for transliteration
-    const strippedText = hebrewText
+    const normalized = hebrewText
+      .normalize("NFD")
       .replace(/[\u0591-\u05AF]/g, "")
-      .replace(/[\u05BB\u05BD\u05C1-\u05C7]/g, "");
+      .replace(/[\u05BD\u05C1-\u05C7]/g, "");
 
-    return strippedText
-      .split("")
-      .map((char) => hebrewToLatinTable[scheme][char] || char)
-      .join("");
+    console.log('normalized:', normalized);
+    console.log('chars:', normalized.split("").map(c => c + ' U+' + c.charCodeAt(0).toString(16).toUpperCase()));
+
+    const chars = normalized.split("");
+    let result = "";
+
+    for (let i = 0; i < chars.length; i++) {
+      const char = chars[i];
+
+      if (char === "\u05BC") continue;
+
+      let j = i + 1;
+      while (j < chars.length && /[\u05B0-\u05BB]/.test(chars[j])) j++;
+
+      const hasDagesh = chars[j] === "\u05BC";
+
+      if (hasDagesh) {
+        const composed = char + "\u05BC";
+        const mapped = hebrewToLatinTable[scheme][composed];
+        result += mapped || (hebrewToLatinTable[scheme][char] || char) + ":";
+      } else {
+        result += hebrewToLatinTable[scheme][char] || char;
+      }
+
+      for (let k = i + 1; k < j; k++) {
+        if (chars[k] !== "\u05BC") {
+          result += hebrewToLatinTable[scheme][chars[k]] || chars[k];
+        }
+      }
+
+      i = hasDagesh ? j : j - 1;
+    }
+
+    return result;
   }
 }
