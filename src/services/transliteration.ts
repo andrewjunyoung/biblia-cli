@@ -277,16 +277,7 @@ export class Transliteration {
   }
 
   hebrew2Latin(hebrewText: string): string {
-    // Strip out Hebrew cantillation marks (Unicode range U+0591-U+05AF and U+05BD-U+05C7)
-    // but keep vowel points and dagesh for transliteration
-    const strippedText = hebrewText
-      .replace(/[\u0591-\u05AF]/g, "")
-      .replace(/[\u05BB\u05BD\u05C1-\u05C7]/g, "");
-
-    return strippedText
-      .split("")
-      .map((char) => hebrewToLatinTable[this.scheme][char] || char)
-      .join("");
+    return Transliteration.hebrew2Latin(hebrewText, this.scheme);
   }
 
   static hebrew2Latin(
