@@ -266,7 +266,7 @@ export class Transliteration {
     // but keep vowel points and dagesh for transliteration
     const strippedText = hebrewText
       .replace(/[\u0591-\u05AF]/g, "")
-      .replace(/[\u05BB-\u05BD\u05C1-\u05C7]/g, "");
+      .replace(/[\u05BB\u05BD\u05C1-\u05C7]/g, "");
 
     return strippedText
       .split("")
@@ -282,7 +282,7 @@ export class Transliteration {
     // but keep vowel points and dagesh for transliteration
     const strippedText = hebrewText
       .replace(/[\u0591-\u05AF]/g, "")
-      .replace(/[\u05BB-\u05BD\u05C1-\u05C7]/g, "");
+      .replace(/[\u05BB\u05BD\u05C1-\u05C7]/g, "");
 
     return strippedText
       .split("")
