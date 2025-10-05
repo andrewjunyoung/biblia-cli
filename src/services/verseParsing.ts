@@ -1,4 +1,5 @@
 import { Books, OldTestamentBook, NewTestamentBook } from "../types/book";
+import { BibleVerseRequestType } from "../types";
 
 const BOOK_ABBREVIATIONS: Record<string, string> = (() => {
   const abbrevs: Record<string, string> = {};
@@ -12,22 +13,24 @@ const BOOK_ABBREVIATIONS: Record<string, string> = (() => {
   return abbrevs;
 })();
 
-export function parseVerseReference(input: string): string[] | null {
+export function parseVerseReference(input: string): BibleVerseRequest | null {
   if (!input || typeof input !== "string") {
     return null;
   }
 
-  // Normalize the input: replace various delimiters with a standard format
-  // Match pattern: BookName Chapter:Verse or BookName Chapter:Verse-EndVerse
+  // Always norm to "{BOOK}.{CHAPTER}.{VERSE_RANGE}"
   const normalized = input
     .trim()
-    .replace(/[\.\-]/g, " ") // Replace dots and dashes with spaces (except in ranges)
-    .replace(/\s+/g, " "); // Normalize multiple spaces
+    .replace(/[\s:]/g, ".")
+    .replace(/\.+/g, ".");
 
-  // Pattern to match: BookName Chapter:Verse-EndVerse or BookName Chapter Verse-EndVerse
-  // Examples: "Genesis 1:1-3", "Gen 1 1-3", etc.
-  const regex =
-    /^([0-9]?\s*[A-Za-z]+[0-9]?)\s+(\d+)[\s:]+(\d+)(?:[\s\-\.]+(\d+))?$/;
+  const bookPattern = /^([0-9]?[A-Za-z]+[0-9]?)/;
+  const chapterPattern = /(?:\.(\d+))?/;
+  const verseRangePattern = /(?:\.(\d+)(?:-(\d+))?)?/;
+
+  const regex = new RegExp(
+    `${bookPattern.source}${chapterPattern.source}${verseRangePattern.source}$`
+  );
   const match = normalized.match(regex);
 
   if (!match) {
@@ -36,63 +39,80 @@ export function parseVerseReference(input: string): string[] | null {
 
   const [, bookName, chapter, startVerse, endVerse] = match;
 
-  // Normalize book name
   const normalizedBook = bookName
     .trim()
     .replace(/^\d+\s*/, (num) => num.trim() + " ");
   const bookAbbr = BOOK_ABBREVIATIONS[normalizedBook];
 
-  if (!bookAbbr) {
-    // Try to find a partial match
-    const bookKey = Object.keys(BOOK_ABBREVIATIONS).find(
-      (key) => key.toLowerCase() === normalizedBook.toLowerCase()
-    );
-    if (!bookKey) {
-      return null;
-    }
-    return buildVerseTokens(
-      BOOK_ABBREVIATIONS[bookKey],
-      parseInt(chapter),
-      parseInt(startVerse),
-      endVerse ? parseInt(endVerse) : undefined
-    );
-  }
-
-  return buildVerseTokens(
+  return BibleVerseRequest.buildVerseRequest(
     bookAbbr,
     parseInt(chapter),
-    parseInt(startVerse),
+    startVerse ? parseInt(startVerse) : undefined,
     endVerse ? parseInt(endVerse) : undefined
   );
 }
 
-/**
- * Build verse tokens in the format "Book.Chapter.Verse"
- */
-function buildVerseTokens(
-  book: string,
-  chapter: number,
-  startVerse: number,
-  endVerse?: number
-): string[] {
-  const tokens: string[] = [];
+export class BibleVerseRequest implements BibleVerseRequestType {
+  bibleId?: string;
+  book: string;
+  chapters: [string];
+  verses: [string];
 
-  if (endVerse === undefined) {
-    // Single verse
-    tokens.push(`${book}.${chapter}.${startVerse}`);
-  } else {
-    // Range of verses
-    for (let verse = startVerse; verse <= endVerse; verse++) {
-      tokens.push(`${book}.${chapter}.${verse}`);
-    }
+  constructor(
+    book: string,
+    chapters: [string],
+    verses: [string],
+    bibleId?: string
+  ) {
+    this.book = book;
+    this.chapters = chapters;
+    this.verses = verses;
+    this.bibleId = bibleId;
   }
 
-  return tokens;
+  static buildVerseRequest(
+    book: string,
+    chapter: number,
+    startVerse?: number,
+    endVerse?: number
+  ): BibleVerseRequest {
+    const verses: string[] = [];
+
+    if (startVerse !== undefined) {
+      if (endVerse === undefined) {
+        // Single verse
+        verses.push(startVerse.toString());
+      } else {
+        // Range of verses
+        for (let verse = startVerse; verse <= endVerse; verse++) {
+          verses.push(verse.toString());
+        }
+      }
+    }
+
+    return new BibleVerseRequest(
+      book,
+      [chapter.toString()] as [string],
+      verses as [string]
+    );
+  }
+
+  buildVerseTokens(): string[] {
+    const tokens: string[] = [];
+    const chapter = this.chapters?.[0];
+
+    if (!chapter || !this.verses) {
+      return tokens;
+    }
+
+    for (const verse of this.verses) {
+      tokens.push(`${this.book}.${chapter}.${verse}`);
+    }
+
+    return tokens;
+  }
 }
 
-/**
- * Determine if a book abbreviation is in the Old Testament
- */
 export function isOldTestament(bookAbbr: string): boolean {
   return Object.values(OldTestamentBook).includes(bookAbbr as OldTestamentBook);
 }

@@ -10,7 +10,7 @@ describe('CLI Integration Tests', () => {
     execSync('npm run build', { cwd: join(__dirname, '../..'), stdio: 'inherit' });
   });
 
-  describe('get-verse command', () => {
+  describe('get-verses command', () => {
     it('should successfully fetch John 3:16 with all expected fields', async () => {
       const results = await getVerse('John 3:16');
 

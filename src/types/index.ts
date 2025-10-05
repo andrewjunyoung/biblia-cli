@@ -7,11 +7,11 @@ export interface BibleVerse {
   text: string;
 }
 
-export interface BibleVerseRequest {
-  bibleId: string | undefined;
+export interface BibleVerseRequestType {
+  bibleId?: string;
   book: string;
-  chapters: [string] | undefined;
-  verses: [string] | undefined;
+  chapters?: [string];
+  verses?: [string];
 }
 
 export interface BibleText {

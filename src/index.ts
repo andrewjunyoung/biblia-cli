@@ -262,14 +262,29 @@ export async function getVerse(
 ) {
   const apiKey = getConfigurationValue("api_key");
   if (!apiKey) {
-    throw new Error('API key not found. Run "biblia configure" to set it up.');
+    throw new Error('API key not found. Run `biblia configure` to set it up.');
   }
 
   // Parse the verse reference
-  const parsedVerses = parseVerseReference(reference);
+  const parsedRequest = parseVerseReference(reference);
+  console.log("p", parsedRequest);
 
-  if (!parsedVerses || parsedVerses.length === 0) {
+  if (!parsedRequest) {
     throw new Error(`Failed to parse verse reference: ${reference}`);
+  }
+
+  let parsedVerses = parsedRequest.buildVerseTokens();
+
+  // If no verses specified, fetch all verses in the chapter
+  if (parsedVerses.length === 0 && parsedRequest.chapters?.[0]) {
+    const chapterId = `${parsedRequest.book}.${parsedRequest.chapters[0]}`;
+    const versesData = await listVerses(chapterId, { bibleId: options.bibleId });
+
+    if (versesData.data && Array.isArray(versesData.data)) {
+      parsedVerses = versesData.data.map((v: any) => v.id);
+    } else {
+      throw new Error(`No verses found in chapter: ${chapterId}`);
+    }
   }
 
   // Fetch each verse
@@ -357,10 +372,8 @@ export async function getVerse(
 
     // Only include Strong's data if filter is not enabled
     if (!options.filter) {
-      // Get Strong's numbers for this verse
       const strongsCodes = strongsBible.get(verseToken) || [];
 
-      // Build codes, roots, and translations arrays
       const roots: string[] = [];
       const translations: string[] = [];
       for (const code of strongsCodes) {
@@ -390,7 +403,7 @@ export async function getVerse(
 }
 
 program
-  .command("get-verse <reference>")
+  .command("get-verses <reference>")
   .description("Get a Bible verse by reference (e.g., Genesis 1:1, Gen 1:1-3)")
   .option("--bible-id <bibleId>", "Bible ID to use for the translation")
   .option("--filter", "Exclude Strong's concordance information")
